@@ -61,7 +61,7 @@ export function Navigation() {
               whileHover={{ scale: 1.05 }}
               className="font-display text-xl md:text-2xl font-bold text-gradient"
             >
-              Portfolio
+              Deepak Vaishnav
             </motion.a>
 
             {/* Desktop Navigation */}

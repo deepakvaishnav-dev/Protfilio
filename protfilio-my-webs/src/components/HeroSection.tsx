@@ -60,10 +60,10 @@ export function HeroSection() {
         className="section-container relative z-10 text-center"
       >
         {/* Status badge */}
-        <motion.div variants={itemVariants} className="mb-8">
+        <motion.div variants={itemVariants} className="mt-20">
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-sm font-medium">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            Available for freelance work
+            Available for work
           </span>
         </motion.div>
 
