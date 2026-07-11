@@ -1,254 +1,308 @@
-import { useState, useRef } from 'react';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Github, ChevronRight } from 'lucide-react';
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-type ProjectCategory = 'all' | 'web' | '3d' | 'mobile' | 'design';
+// Register GSAP ScrollTrigger
+gsap.registerPlugin(ScrollTrigger);
 
 interface Project {
-  id: number;
+  idx: string;
+  stage: string;
   title: string;
   description: string;
-  image: string;
-  category: ProjectCategory;
-  technologies: string[];
-  liveUrl?: string;
-  githubUrl?: string;
-  featured?: boolean;
+  tags: string[];
+  link?: string;
+  linkLabel?: string;
+  isPrivate?: boolean;
 }
 
 const projects: Project[] = [
   {
-    id: 1,
-    title: 'Nebula Dashboard',
-    description: 'A futuristic analytics dashboard with real-time data visualization and 3D charts.',
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80',
-    category: 'web',
-    technologies: ['React', 'Three.js', 'D3.js', 'WebSocket'],
-    liveUrl: '#',
-    githubUrl: '#',
-    featured: true,
+    idx: "Node 01",
+    stage: "AI · voice assistant",
+    title: "JARVIS",
+    description:
+      "A Python-based personal AI assistant that automates day-to-day tasks through natural voice/text commands — the project that pulled me from 'using AI' to actually building with it.",
+    tags: ["Python", "AI", "Automation"],
+    link: "https://github.com/deepakvaishnav-dev/JARVIS",
+    linkLabel: "GitHub ↗",
   },
   {
-    id: 2,
-    title: 'Quantum Portfolio',
-    description: 'An immersive 3D portfolio experience with particle effects and smooth animations.',
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
-    category: '3d',
-    technologies: ['Three.js', 'GSAP', 'React Three Fiber'],
-    liveUrl: '#',
-    githubUrl: '#',
-    featured: true,
+    idx: "Node 02",
+    stage: "automation · n8n + OpenAI",
+    title: "WhatsApp Automation Suite",
+    description:
+      "An automation pipeline connecting the WhatsApp API, n8n, and OpenAI — messages get read, understood, and answered without anyone touching a keyboard. My most-discussed post on LinkedIn.",
+    tags: ["n8n", "OpenAI API", "WhatsApp API"],
+    link: "https://www.linkedin.com/posts/deepak-vaishnav-5185b9396_whatsappapi-n8n-openai-share-7451227544332288000-Oy7f",
+    linkLabel: "Case study ↗",
   },
   {
-    id: 3,
-    title: 'Synth Wave App',
-    description: 'A mobile music production app with real-time audio visualization.',
-    image: 'https://images.unsplash.com/photo-1614149162883-504ce4d13909?w=800&q=80',
-    category: 'mobile',
-    technologies: ['React Native', 'Web Audio API', 'Canvas'],
-    liveUrl: '#',
-    githubUrl: '#',
+    idx: "Node 03",
+    stage: "AI · edtech",
+    title: "Study Buddy AI",
+    description:
+      "An AI-powered learning platform built to help students learn faster — AI chat assistant, notes management, and a smart-learning mode wrapped in a clean, responsive UI.",
+    tags: ["React", "TypeScript", "Node.js", "MongoDB"],
+    link: "https://study-buddy-ai-kohl.vercel.app/",
+    linkLabel: "Live demo ↗",
   },
   {
-    id: 4,
-    title: 'Neon Brand Identity',
-    description: 'Complete brand identity design for a tech startup with futuristic aesthetics.',
-    image: 'https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?w=800&q=80',
-    category: 'design',
-    technologies: ['Figma', 'After Effects', 'Blender'],
-    liveUrl: '#',
+    idx: "Node 04",
+    stage: "fintech · AI insights",
+    title: "Expense Tracker AI",
+    description:
+      "A modern expense-management app with a full analytics dashboard and AI-generated spending suggestions — built to make 'where did my money go' an answerable question.",
+    tags: ["React", "TypeScript", "AI Insights"],
+    isPrivate: true,
   },
   {
-    id: 5,
-    title: 'Cyber Commerce',
-    description: 'E-commerce platform with AR product previews and gesture navigation.',
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80',
-    category: 'web',
-    technologies: ['Next.js', 'AR.js', 'Stripe', 'Prisma'],
-    liveUrl: '#',
-    githubUrl: '#',
-    featured: true,
+    idx: "Node 05",
+    stage: "developer tooling",
+    title: "Devhub-AI",
+    description:
+      "An AI-assisted developer productivity tool, built to fold everyday dev tasks into one workspace instead of ten browser tabs.",
+    tags: ["TypeScript", "AI"],
+    link: "https://github.com/deepakvaishnav-dev/Devhub-AI",
+    linkLabel: "GitHub ↗",
   },
   {
-    id: 6,
-    title: 'Hologram UI Kit',
-    description: 'A complete design system with holographic and glassmorphism components.',
-    image: 'https://images.unsplash.com/photo-1545239351-ef35f43d514b?w=800&q=80',
-    category: 'design',
-    technologies: ['Figma', 'CSS', 'Storybook'],
-    liveUrl: '#',
+    idx: "Node 06",
+    stage: "browser tooling",
+    title: "Productivity Chrome Extension",
+    description:
+      "A React + TypeScript browser extension with authentication and a dashboard view — small surface area, real engineering underneath.",
+    tags: ["React", "TypeScript", "Chrome APIs"],
+    isPrivate: true,
   },
 ];
 
-const categories: { id: ProjectCategory; label: string }[] = [
-  { id: 'all', label: 'All Projects' },
-  { id: 'web', label: 'Web Apps' },
-  { id: '3d', label: '3D / WebGL' },
-  { id: 'mobile', label: 'Mobile' },
-  { id: 'design', label: 'Design' },
-];
+// Constant floating oscillator wrapper to simulate cards floating in 3D space
+function FloatingCardWrapper({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
 
-export function ProjectsSection() {
-  const [activeCategory, setActiveCategory] = useState<ProjectCategory>('all');
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
 
-  const filteredProjects = projects.filter(
-    (project) => activeCategory === 'all' || project.category === activeCategory
-  );
+    const anim = gsap.to(el, {
+      y: "+=12",
+      duration: 3.5 + Math.random() * 2,
+      repeat: -1,
+      yoyo: true,
+      ease: "sine.inOut",
+      delay,
+    });
+
+    return () => {
+      anim.kill();
+    };
+  }, [delay]);
+
+  return <div ref={ref}>{children}</div>;
+}
+
+// Holographic 3D parallax tilt card
+function TiltCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const card = cardRef.current;
+    const content = contentRef.current;
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+
+    // Tilt card surface container
+    gsap.to(card, {
+      rotateY: px * 14,
+      rotateX: -py * 14,
+      transformPerspective: 800,
+      duration: 0.35,
+      ease: "power2.out",
+    });
+
+    // Parallax shift contents relative to tilt angle
+    if (content) {
+      gsap.to(content, {
+        x: px * 8,
+        y: py * 8,
+        z: 14,
+        transformPerspective: 800,
+        duration: 0.35,
+        ease: "power2.out",
+      });
+    }
+  };
+
+  const onMouseLeave = () => {
+    const card = cardRef.current;
+    const content = contentRef.current;
+    if (!card) return;
+
+    gsap.to(card, {
+      rotateY: 0,
+      rotateX: 0,
+      duration: 0.5,
+      ease: "power2.out",
+    });
+
+    if (content) {
+      gsap.to(content, {
+        x: 0,
+        y: 0,
+        z: 0,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+    }
+  };
 
   return (
-    <section id="projects" className="py-24 md:py-32 relative overflow-hidden bg-muted/30">
-      {/* Background */}
-      <div className="absolute inset-0 bg-grid opacity-20" />
+    <div
+      ref={cardRef}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      className={`p-card cursor-default ${className}`}
+      style={{ transformStyle: "preserve-3d" }}
+    >
+      <div ref={contentRef} style={{ transformStyle: "preserve-3d" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-      <div ref={ref} className="section-container relative">
-        {/* Section header */}
+export function ProjectsSection() {
+  const pipelineRef = useRef<HTMLDivElement>(null);
+  const pulseRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const pipeline = pipelineRef.current;
+    const pulse = pulseRef.current;
+
+    if (!pipeline || !pulse) return;
+
+    const scrollTriggerInstance = ScrollTrigger.create({
+      trigger: pipeline,
+      start: "top 42%",
+      end: "bottom 58%",
+      scrub: true,
+      animation: gsap.to(pulse, {
+        top: "100%",
+        ease: "none",
+      }),
+    });
+
+    return () => {
+      scrollTriggerInstance.kill();
+    };
+  }, []);
+
+  return (
+    <section id="work" className="py-36 relative overflow-hidden bg-transparent">
+      {/* Background visual overlays */}
+      <div className="absolute inset-0 bg-grid opacity-[0.15] pointer-events-none" />
+
+      <div className="wrap">
+        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8 }}
+          className="mb-24 max-w-[640px]"
         >
-          <span className="text-primary font-medium text-sm tracking-wider uppercase mb-4 block">
-            Portfolio
+          <span className="mono text-xs uppercase tracking-wider text-accent mb-4 block font-semibold">
+            03 — selected work
           </span>
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-6">
-            Featured <span className="text-gradient">Projects</span>
+          <h2 className="text-4xl font-bold tracking-tight mb-4">
+            From idea to deployed pipeline
           </h2>
-          <p className="max-w-2xl mx-auto text-muted-foreground text-lg">
-            A selection of my recent work showcasing creativity, technical expertise, 
-            and attention to detail.
+          <p className="text-muted-foreground text-lg">
+            A run of the projects I'd actually want a recruiter to open — each one is a full loop:
+            interface, backend, and (mostly) an AI or automation layer doing real work.
           </p>
         </motion.div>
 
-        {/* Category filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="flex flex-wrap justify-center gap-3 mb-12"
-        >
-          {categories.map((category) => (
-            <motion.button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`px-6 py-2 rounded-full font-medium text-sm transition-all duration-300 ${
-                activeCategory === category.id
-                  ? 'bg-primary text-primary-foreground glow-primary'
-                  : 'glass-card text-muted-foreground hover:text-foreground'
-              }`}
+        {/* Pipeline timeline */}
+        <div ref={pipelineRef} className="pipeline">
+          {/* Vertical central spine line */}
+          <div className="pipeline-spine">
+            {/* Glowing travelling pulse node */}
+            <div ref={pulseRef} className="spine-pulse" />
+          </div>
+
+          {/* Project timeline nodes */}
+          {projects.map((proj, index) => (
+            <motion.div
+              key={proj.title}
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-120px" }}
+              transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+              className="p-node"
             >
-              {category.label}
-            </motion.button>
-          ))}
-        </motion.div>
+              {/* Spine marker bullet */}
+              <div className="p-marker" />
 
-        {/* Projects grid */}
-        <motion.div layout className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <AnimatePresence mode="popLayout">
-            {filteredProjects.map((project, index) => (
-              <motion.article
-                key={project.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="project-card glass-card group"
-              >
-                {/* Image */}
-                <div className="relative h-56 overflow-hidden rounded-t-xl">
-                  <img
-                    src={project.image}
-                    alt={project.title}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-                  
-                  {/* Featured badge */}
-                  {project.featured && (
-                    <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-primary/90 text-primary-foreground text-xs font-semibold">
-                      Featured
-                    </div>
-                  )}
+              {/* Side Stage Metadata */}
+              <div className="p-meta">
+                <span className="idx mono text-xs font-semibold text-primary block mb-2">
+                  {proj.idx}
+                </span>
+                <span className="stage text-xs uppercase tracking-wider font-semibold text-muted-foreground block">
+                  {proj.stage}
+                </span>
+              </div>
 
-                  {/* Hover overlay with links */}
-                  <div className="absolute inset-0 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-background/60 backdrop-blur-sm">
-                    {project.liveUrl && (
-                      <motion.a
-                        href={project.liveUrl}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="p-3 rounded-full bg-primary text-primary-foreground"
-                        aria-label="View live project"
-                      >
-                        <ExternalLink size={20} />
-                      </motion.a>
-                    )}
-                    {project.githubUrl && (
-                      <motion.a
-                        href={project.githubUrl}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        className="p-3 rounded-full glass-card"
-                        aria-label="View source code"
-                      >
-                        <Github size={20} />
-                      </motion.a>
-                    )}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-6">
-                  <h3 className="font-display text-xl font-semibold mb-2 group-hover:text-primary transition-colors">
-                    {project.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-                    {project.description}
+              {/* Floating Wrapper & Interactive Card */}
+              <FloatingCardWrapper delay={index * 0.18}>
+                <TiltCard>
+                  <h3 className="text-xl font-bold mb-3">{proj.title}</h3>
+                  <p className="text-muted-foreground text-sm mb-5 leading-relaxed">
+                    {proj.description}
                   </p>
-                  
-                  {/* Tech stack */}
-                  <div className="flex flex-wrap gap-2">
-                    {project.technologies.slice(0, 3).map((tech) => (
+
+                  {/* Tech tags */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {proj.tags.map((t) => (
                       <span
-                        key={tech}
-                        className="px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs"
+                        key={t}
+                        className="mono text-[10px] font-semibold border border-border px-2.5 py-1 rounded bg-secondary text-foreground/80"
                       >
-                        {tech}
+                        {t}
                       </span>
                     ))}
-                    {project.technologies.length > 3 && (
-                      <span className="px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs">
-                        +{project.technologies.length - 3}
+                  </div>
+
+                  {/* Links */}
+                  <div className="p-links text-xs font-semibold">
+                    {proj.isPrivate ? (
+                      <span className="private text-muted-foreground flex items-center gap-1.5 mono text-[10px]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground inline-block" />
+                        repo private — case study on request
                       </span>
+                    ) : (
+                      <a
+                        href={proj.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:text-foreground inline-flex items-center gap-1 transition-colors duration-200"
+                      >
+                        {proj.linkLabel}
+                      </a>
                     )}
                   </div>
-                </div>
-              </motion.article>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* View all button */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={isInView ? { opacity: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="text-center mt-12"
-        >
-          <motion.a
-            href="#"
-            whileHover={{ scale: 1.05, x: 5 }}
-            className="inline-flex items-center gap-2 text-primary font-medium group"
-          >
-            View all projects
-            <ChevronRight className="group-hover:translate-x-1 transition-transform" size={18} />
-          </motion.a>
-        </motion.div>
+                </TiltCard>
+              </FloatingCardWrapper>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );

@@ -1,44 +1,36 @@
-import { motion } from 'framer-motion';
-import { Heart, ArrowUp } from 'lucide-react';
-
 export function Footer() {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   return (
-    <footer className="py-12 border-t border-border/50 relative">
-      <div className="section-container">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Logo */}
-          <motion.a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              scrollToTop();
-            }}
-            whileHover={{ scale: 1.05 }}
-            className="font-display text-2xl font-bold text-gradient"
-          >
-          Deepak Vaishnav
-          </motion.a>
+    <footer className="py-12 border-t border-border bg-transparent relative z-10">
+      <div className="wrap flex justify-between items-center flex-wrap gap-4">
+        {/* Copyright */}
+        <div className="copy mono text-[13px] text-muted-foreground">
+          © 2026 Deepak Vaishnav
+        </div>
 
-          {/* Copyright */}
-          <p className="text-muted-foreground text-sm flex items-center gap-1">
-            © {new Date().getFullYear()} Deepak Vaishnav. Built with
-            and React.
-          </p>
-
-          {/* Back to top */}
-          <motion.button
-            onClick={scrollToTop}
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.9 }}
-            className="p-3 rounded-xl glass-card text-muted-foreground hover:text-primary transition-colors"
-            aria-label="Back to top"
+        {/* Links */}
+        <div className="foot-links flex gap-6 text-sm font-medium text-muted-foreground">
+          <a
+            href="mailto:deepakvaishnav486@gmail.com"
+            className="hover:text-foreground transition-colors duration-300 link-underline pb-0.5"
           >
-            <ArrowUp size={20} />
-          </motion.button>
+            Email
+          </a>
+          <a
+            href="https://www.linkedin.com/in/deepak-vaishnav-5185b9396/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors duration-300 link-underline pb-0.5"
+          >
+            LinkedIn
+          </a>
+          <a
+            href="https://github.com/deepakvaishnav-dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground transition-colors duration-300 link-underline pb-0.5"
+          >
+            GitHub
+          </a>
         </div>
       </div>
     </footer>
