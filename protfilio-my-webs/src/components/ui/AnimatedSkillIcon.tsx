@@ -9,7 +9,7 @@ interface AnimatedSkillIconProps {
 
 export function AnimatedSkillIcon({ type, isHovered, triggerEntrance }: AnimatedSkillIconProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<anime.AnimeInstance | null>(null);
+  const animationRef = useRef<anime.AnimeTimelineInstance | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;

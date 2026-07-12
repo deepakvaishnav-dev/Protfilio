@@ -39,7 +39,7 @@ const drawerVariants = {
     opacity: 0,
     y: -8,
     scaleY: 0.95,
-    transition: { duration: 0.22, ease: [0.4, 0, 1, 1] }, // asymmetric — fast exit
+    transition: { duration: 0.22, ease: [0.4, 0, 1, 1] as [number, number, number, number] }, // asymmetric — fast exit
   },
 };
 
