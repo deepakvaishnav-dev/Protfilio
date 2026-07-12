@@ -136,8 +136,21 @@
     @apply max-w-[1180px] mx-auto px-8 w-full;
   }
 
-  /* Custom smooth cursor styles */
-  #cursor-dot, #cursor-ring {
+  /* ─────────────────────────────────────────────────────────────────────────
+   * GPU UTILITY — promotes element to its own compositor layer
+   * Apply to any animated surface that isn't already using will-change
+   * ───────────────────────────────────────────────────────────────────────── */
+  .gpu {
+    will-change: transform;
+    transform: translateZ(0);  /* Forces GPU layer promotion */
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+   * CUSTOM CURSOR — all three elements on compositor thread
+   * ───────────────────────────────────────────────────────────────────────── */
+  #cursor-dot,
+  #cursor-ring,
+  #cursor-trail {
     position: fixed;
     top: 0;
     left: 0;
@@ -145,52 +158,58 @@
     z-index: 9999;
     border-radius: 50%;
     transform: translate(-50%, -50%);
-    will-change: transform, width, height, border-color, background-color;
+    /* Only GPU-composited properties — no layout, no paint */
+    will-change: transform, width, height, opacity;
+    backface-visibility: hidden;
   }
 
   #cursor-dot {
     width: 6px;
     height: 6px;
     background-color: hsl(var(--foreground));
+    /* No CSS transition — GSAP handles all motion */
   }
 
+  /* Trail ghost — lags behind with fade */
+  #cursor-trail {
+    width: 12px;
+    height: 12px;
+    background-color: hsl(var(--primary) / 0.18);
+    opacity: 0.12;
+    /* GSAP handles transform only */
+  }
+
+  /* Ring — size/color now animated via GSAP, not CSS class toggle */
   #cursor-ring {
     width: 34px;
     height: 34px;
-    border: 1.5px solid rgba(var(--foreground-rgb, 18, 19, 26), 0.35);
+    border: 1.5px solid rgba(18, 19, 26, 0.35);
     background-color: transparent;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-                height 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
-                border-color 0.3s ease, 
-                background-color 0.3s ease;
-  }
-
-  #cursor-ring.big {
-    width: 64px;
-    height: 64px;
-    border-color: hsl(var(--primary));
-    background-color: hsla(var(--primary) / 0.06);
+    /* No CSS transition on ring — GSAP handles it (eliminates class repaint) */
   }
 
   @media (max-width: 900px), (pointer: coarse) {
-    #cursor-dot, #cursor-ring {
+    #cursor-dot,
+    #cursor-ring,
+    #cursor-trail {
       display: none;
     }
   }
 
-  /* Background 3D canvas container holds the WebGL scene underneath */
-
-  /* Scroll-reveal system components */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * SCROLL REVEAL SYSTEM — GPU-enforced
+   * ───────────────────────────────────────────────────────────────────────── */
   .reveal {
     opacity: 0;
-    transform: translateY(36px);
-    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), 
+    transform: translate3d(0, 36px, 0);  /* 3D context forces GPU layer */
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
                 transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
   }
 
   .reveal.in {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 
   .reveal-word {
@@ -200,12 +219,13 @@
 
   .reveal-word span {
     display: inline-block;
-    transform: translateY(110%);
+    transform: translate3d(0, 110%, 0);  /* 3D path for GPU */
     transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
   }
 
   .reveal-word.in span {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 
   /* Navigation Scroll Transition styling */
@@ -220,9 +240,12 @@
   .magnetic {
     display: inline-block;
     will-change: transform;
+    transform: translateZ(0);  /* GPU layer */
   }
 
-  /* Stats grid styles */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * STATS GRID
+   * ───────────────────────────────────────────────────────────────────────── */
   .stat-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -239,7 +262,9 @@
     transition: background-color 0.3s ease;
   }
 
-  /* Project Pipeline Timeline spine */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * PROJECT PIPELINE TIMELINE
+   * ───────────────────────────────────────────────────────────────────────── */
   .pipeline {
     position: relative;
   }
@@ -261,6 +286,7 @@
     }
   }
 
+  /* Spine pulse — GPU-composited glow using box-shadow + transform only */
   .spine-pulse {
     position: absolute;
     left: 50%;
@@ -270,7 +296,16 @@
     border-radius: 50%;
     background: hsl(var(--primary));
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 20px 5px hsla(var(--primary) / 0.35);
+    will-change: transform, top;
+    /* Radial glow pulse via keyframe on box-shadow (paint-only, not layout) */
+    animation: spine-glow 2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes spine-glow {
+      0%, 100% { box-shadow: 0 0 10px 3px hsla(var(--primary) / 0.25); }
+      50%       { box-shadow: 0 0 24px 8px hsla(var(--primary) / 0.55); }
+    }
   }
 
   .p-node {
@@ -321,7 +356,9 @@
     background: hsl(var(--card));
     border: 2px solid hsl(var(--primary));
     z-index: 2;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
+    /* GPU-only: only transform and border-color animate */
+    will-change: transform;
+    transition: border-color 0.3s ease;
   }
 
   @media (max-width: 900px) {
@@ -334,39 +371,54 @@
     color: hsl(var(--muted-foreground));
   }
 
+  /* ─────────────────────────────────────────────────────────────────────────
+   * PROJECT CARD — GPU layer promoted, only compositor properties animate
+   * ───────────────────────────────────────────────────────────────────────── */
   .p-card {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
     border-radius: 18px;
     padding: 32px;
-    transition: box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1), 
-                border-color 0.5s ease, 
+    /* Only box-shadow and border-color in CSS — transform handled by GSAP */
+    transition: box-shadow 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.55s ease,
                 background-color 0.3s ease;
     transform-style: preserve-3d;
+    /* GPU layer promotion — prevents layout thrashing */
     will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 
   .p-card:hover {
     border-color: transparent;
-    box-shadow: 0 20px 60px -20px rgba(18, 19, 26, 0.12);
+    box-shadow: 0 24px 64px -20px rgba(18, 19, 26, 0.14);
   }
 
   .dark .p-card:hover {
-    box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 24px 64px -20px rgba(0, 0, 0, 0.55);
   }
 
-  /* Grid overlay for Hero */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * GRID OVERLAY for Hero
+   * ───────────────────────────────────────────────────────────────────────── */
   .bg-grid {
-    background-image: 
+    background-image:
       linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
     background-size: 50px 50px;
   }
 
-  /* Glass card component */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * GLASS CARD — GPU-promoted backdrop surface
+   * ───────────────────────────────────────────────────────────────────────── */
   .glass-card {
     @apply backdrop-blur-xl border border-border/50;
     background: hsl(var(--glass-bg));
+    /* GPU layer — transform animations composited separately */
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
   }
 }
 
@@ -394,7 +446,9 @@
     @apply bg-primary;
   }
 
-  /* Reduced Motion Utility */
+  /* ─────────────────────────────────────────────────────────────────────────
+   * REDUCED MOTION — respects accessibility preferences
+   * ───────────────────────────────────────────────────────────────────────── */
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.01ms !important;

@@ -14,3 +14,4 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
+// Force Vite configuration reload and re-bundling

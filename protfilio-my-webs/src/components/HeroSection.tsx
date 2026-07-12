@@ -3,6 +3,72 @@ import { motion } from "framer-motion";
 import * as THREE from "three";
 import { Magnetic } from "./ui/Magnetic";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Spring Physics Tokens — stiffness:180, damping:12, mass:0.8
+// ─────────────────────────────────────────────────────────────────────────────
+const SPRING_BASE = { type: "spring" as const, stiffness: 180, damping: 12, mass: 0.8 };
+const SPRING_SNAP = { type: "spring" as const, stiffness: 260, damping: 20, mass: 0.6 };
+
+// Narrative stagger — 0.05s increments drive eye movement top → bottom
+const containerVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.05,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+// Eyebrow — slides in from left axis for distinct directional narrative
+const eyebrowVariants = {
+  hidden: { opacity: 0, x: -22, willChange: "transform" },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { ...SPRING_BASE, delay: 0.05 },
+  },
+};
+
+// Heading lines — masked clip reveal, spring-settled
+const wordRevealVariants = {
+  hidden: { y: "110%", willChange: "transform" },
+  visible: {
+    y: "0%",
+    transition: { ...SPRING_BASE },
+  },
+};
+
+// Body text — fades + rises
+const itemVariants = {
+  hidden: { opacity: 0, y: 24, willChange: "transform, opacity" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { ...SPRING_BASE },
+  },
+};
+
+// Buttons — pop-in with tighter spring
+const buttonGroupVariants = {
+  hidden: { opacity: 0, y: 18, willChange: "transform, opacity" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { ...SPRING_SNAP, delay: 0.35 },
+  },
+};
+
+// Scroll cue — springs up from bottom
+const scrollCueVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { ...SPRING_BASE, delay: 0.55 },
+  },
+};
+
 export function HeroSection() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -23,7 +89,6 @@ export function HeroSection() {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Make dynamic canvas glow textures
     function makeGlowTexture(hex: string) {
       const size = 128;
       const c = document.createElement("canvas");
@@ -40,8 +105,8 @@ export function HeroSection() {
       return new THREE.CanvasTexture(c);
     }
 
-    const glowTexMain = makeGlowTexture("#4640DE"); // Primary Accent
-    const glowTexAccent = makeGlowTexture("#12A594"); // Secondary Accent
+    const glowTexMain = makeGlowTexture("#4640DE");
+    const glowTexAccent = makeGlowTexture("#12A594");
 
     const NODE_COUNT = window.innerWidth < 700 ? 40 : 85;
     const RANGE = 75;
@@ -49,7 +114,6 @@ export function HeroSection() {
     const group = new THREE.Group();
     scene.add(group);
 
-    // Create Sprites for network nodes
     for (let i = 0; i < NODE_COUNT; i++) {
       const isAccent = i % 9 === 0;
       const mat = new THREE.SpriteMaterial({
@@ -76,13 +140,12 @@ export function HeroSection() {
       nodes.push(sprite);
     }
 
-    // Determine line color based on theme
     const getLineColor = () => {
       const isDark = document.documentElement.classList.contains("dark");
       return isDark ? 0x3a3d4a : 0xd8d8e4;
     };
 
-    let lineMat = new THREE.LineBasicMaterial({
+    const lineMat = new THREE.LineBasicMaterial({
       color: getLineColor(),
       transparent: true,
       opacity: 0.65,
@@ -91,7 +154,6 @@ export function HeroSection() {
     const linePositions: number[] = [];
     const maxDist = 20;
 
-    // Generate line segments positions
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const d = nodes[i].position.distanceTo(nodes[j].position);
@@ -107,7 +169,7 @@ export function HeroSection() {
     const lineSegments = new THREE.LineSegments(lineGeo, lineMat);
     group.add(lineSegments);
 
-    // Mouse interactive rotations variables
+    // ── Mouse inertia — raised lerp factor for more responsive feel ──
     let mouseX = 0,
       mouseY = 0,
       targetRotY = 0,
@@ -122,7 +184,6 @@ export function HeroSection() {
 
     window.addEventListener("mousemove", onMouseMove);
 
-    // Window Resize Handler
     const onResize = () => {
       width = window.innerWidth;
       height = heroSection.offsetHeight;
@@ -130,16 +191,13 @@ export function HeroSection() {
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     };
-
     window.addEventListener("resize", onResize);
 
-    // MutationObserver to update line colors when dark/light class switches
     const observer = new MutationObserver(() => {
       lineMat.color.setHex(getLineColor());
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
-    // Request Animation Frame loop
     let animationId: number;
     let t = 0;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -148,10 +206,12 @@ export function HeroSection() {
       animationId = requestAnimationFrame(animate);
       t += 0.01;
       if (!reduceMotion) {
-        group.rotation.y += (targetRotY - group.rotation.y) * 0.02 + 0.0006;
-        group.rotation.x += (-targetRotX - group.rotation.x) * 0.02;
+        // Raised lerp 0.02 → 0.05 for responsive inertia with natural mass
+        group.rotation.y += (targetRotY - group.rotation.y) * 0.05 + 0.0006;
+        group.rotation.x += (-targetRotX - group.rotation.x) * 0.05;
 
         nodes.forEach((n) => {
+          // GPU-only y-axis float — only translateY, composited on GPU
           n.position.y =
             n.userData.baseY + Math.sin(t * n.userData.speed * 4 + n.userData.offset) * 1.5;
           n.material.opacity =
@@ -164,14 +224,11 @@ export function HeroSection() {
 
     animate();
 
-    // Cleanup WebGL resources on unmount
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("resize", onResize);
       observer.disconnect();
-
-      // Dispose ThreeJS resources
       group.remove(lineSegments);
       nodes.forEach((n) => {
         group.remove(n);
@@ -189,30 +246,19 @@ export function HeroSection() {
     document.getElementById("about")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Content text animations
-  const containerVariants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: 0.15,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } },
-  };
-
-  const wordSpanVariants = {
-    hidden: { y: "110%" },
-    visible: { y: 0, transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] } },
-  };
-
   return (
-    <section ref={heroRef} className="hero relative min-h-screen flex items-center overflow-hidden">
+    <section
+      ref={heroRef}
+      className="hero relative min-h-screen flex items-center overflow-hidden"
+      style={{ willChange: "transform" }}
+    >
       {/* Three.js interactive canvas network */}
-      <canvas id="hero-canvas" ref={canvasRef} className="absolute inset-0 z-0 opacity-[0.85] pointer-events-none" />
+      <canvas
+        id="hero-canvas"
+        ref={canvasRef}
+        className="absolute inset-0 z-0 opacity-[0.85] pointer-events-none"
+        style={{ willChange: "transform" }}
+      />
 
       {/* Grid overlay for depth */}
       <div className="absolute inset-0 bg-grid opacity-[0.25] pointer-events-none" />
@@ -222,56 +268,98 @@ export function HeroSection() {
         initial="hidden"
         animate="visible"
         className="wrap hero-content relative z-10 pt-20"
+        style={{ willChange: "transform" }}
       >
-        {/* Eyebrow */}
-        <motion.div variants={itemVariants} className="eyebrow inline-flex items-center gap-2 mb-8">
+        {/* Eyebrow — slides from left axis (distinct from y-axis heading) */}
+        <motion.div
+          variants={eyebrowVariants}
+          className="eyebrow inline-flex items-center gap-2 mb-8"
+          style={{ willChange: "transform, opacity" }}
+        >
           open to full-time roles · jaipur, india
         </motion.div>
 
-        {/* Heading */}
+        {/* Heading — masked word reveal with spring settle */}
         <motion.h1
           variants={itemVariants}
           className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.05]"
+          style={{ willChange: "transform, opacity" }}
         >
           <span className="reveal-word block leading-none">
-            <motion.span variants={wordSpanVariants}>Full-stack developer</motion.span>
+            <motion.span variants={wordRevealVariants} style={{ willChange: "transform" }}>
+              Full-stack developer
+            </motion.span>
           </span>
           <span className="reveal-word block leading-none">
-            <motion.span variants={wordSpanVariants}>
+            <motion.span
+              variants={wordRevealVariants}
+              style={{ willChange: "transform" }}
+            >
               who ships <em className="not-italic text-primary">connected systems.</em>
             </motion.span>
           </span>
         </motion.h1>
 
         {/* Description */}
-        <motion.p variants={itemVariants} className="lead max-w-[560px] text-muted-foreground text-lg mb-12">
-          MERN + TypeScript on the front, Node &amp; AI/automation pipelines underneath — I wire products
-          end to end, from schema to webhook, and I'm currently looking for a full-time engineering seat.
+        <motion.p
+          variants={itemVariants}
+          className="lead max-w-[560px] text-muted-foreground text-lg mb-12"
+          style={{ willChange: "transform, opacity" }}
+        >
+          MERN + TypeScript on the front, Node &amp; AI/automation pipelines underneath — I wire
+          products end to end, from schema to webhook, and I'm currently looking for a full-time
+          engineering seat.
         </motion.p>
 
-        {/* Action buttons */}
-        <motion.div variants={itemVariants} className="hero-actions flex gap-4 flex-wrap">
+        {/* Action buttons — snap-in with tighter spring, scale micro-bounce */}
+        <motion.div
+          variants={buttonGroupVariants}
+          className="hero-actions flex gap-4 flex-wrap"
+          style={{ willChange: "transform, opacity" }}
+        >
           <Magnetic multiplier={0.2}>
-            <a href="#work" className="btn-primary px-8 py-4 bg-foreground text-background font-semibold rounded-full flex items-center gap-2.5 transition-colors duration-300 hover:bg-primary hover:text-white">
+            <motion.a
+              href="#work"
+              whileHover={{ scale: 1.04, transition: { ...SPRING_SNAP, duration: undefined } }}
+              whileTap={{ scale: 0.96, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+              className="btn-primary px-8 py-4 bg-foreground text-background font-semibold rounded-full flex items-center gap-2.5 transition-colors duration-300 hover:bg-primary hover:text-white"
+              style={{ willChange: "transform" }}
+            >
               See the work →
-            </a>
+            </motion.a>
           </Magnetic>
           <Magnetic multiplier={0.25}>
-            <a href="mailto:deepakvaishnav486@gmail.com" className="btn-ghost px-8 py-4 border border-border bg-card hover:border-foreground hover:bg-secondary font-medium rounded-full transition-colors duration-300">
+            <motion.a
+              href="mailto:deepakvaishnav486@gmail.com"
+              whileHover={{ scale: 1.03, transition: { ...SPRING_SNAP, duration: undefined } }}
+              whileTap={{ scale: 0.96, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+              className="btn-ghost px-8 py-4 border border-border bg-card hover:border-foreground hover:bg-secondary font-medium rounded-full transition-colors duration-300"
+              style={{ willChange: "transform" }}
+            >
               Email me
-            </a>
+            </motion.a>
           </Magnetic>
         </motion.div>
       </motion.div>
 
-      {/* Scroll indicator */}
-      <button
+      {/* Scroll indicator — springs up from below after content reveals */}
+      <motion.button
+        variants={scrollCueVariants}
+        initial="hidden"
+        animate="visible"
         onClick={handleScrollDown}
+        whileHover={{ opacity: 1, y: -2, transition: { duration: 0.18, ease: "easeOut" } }}
         className="scroll-cue absolute bottom-10 left-8 z-10 flex items-center gap-2.5 mono text-[10px] text-muted-foreground uppercase tracking-widest"
+        style={{ willChange: "transform, opacity" }}
       >
-        <span className="line w-px h-9 block bg-gradient-to-b from-muted-foreground to-transparent animate-pulse" />
+        <motion.span
+          className="line w-px h-9 block bg-gradient-to-b from-muted-foreground to-transparent"
+          animate={{ scaleY: [1, 0.5, 1], opacity: [0.6, 1, 0.6] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          style={{ transformOrigin: "top", willChange: "transform, opacity" }}
+        />
         scroll
-      </button>
+      </motion.button>
     </section>
   );
 }
